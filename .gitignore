@@ -1,0 +1,16 @@
+# Folder lingkungan virtual
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# FILE RAHASIA (JANGAN DI-UPLOAD!)
+.env
+
+# File session Instagram (kalau masih ada)
+ig_session.json
+
+# Folder MacOS/Windows yang tidak penting
+.DS_Store
+Thumbs.db
