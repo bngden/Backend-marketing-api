@@ -9,6 +9,10 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String) # Ingat, password HARUS di-hash, tidak boleh plain text!
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    business = Column(String, nullable=True)
+    domicile = Column(String, nullable=True)
 
     # Relasi: 1 User bisa punya banyak Postingan
     posts = relationship("ScheduledPost", back_populates="owner")
