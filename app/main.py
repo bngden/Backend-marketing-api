@@ -4,83 +4,100 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy.future import select # WAJIB IMPORT INI UNTUK QUERY DB DI SCHEDULER
+from sqlalchemy.future import select
 
 # Import koneksi database dan model
 from app.db.database import engine, Base, AsyncSessionLocal
-from app.models import post # Mendaftarkan tabel
 from app.models.post import ScheduledPost, PostStatus
 
-# Import services & routes
+# Import services (Kurir Pengantar)
 from app.services.instagram_service import post_to_instagram
-from app.api.routes import schedule, generate, auth, posts
+from app.services.telegram_service import post_to_telegram # Import kurir baru
 
-# Inisialisasi Mesin Waktu (Scheduler)
+# Import routes (Pintu Gerbang API)
+from app.api.routes import auth, generate, schedule # Posts sudah dibuang
+
+# Inisialisasi Robot Penjadwal (Scheduler)
 scheduler = AsyncIOScheduler()
 
+# =====================================================================
+# 🤖 ROBOT KURIR OTOMATIS: Mengecek Database setiap 1 menit
+# =====================================================================
 @scheduler.scheduled_job('interval', minutes=1)
 async def check_and_publish_scheduled_posts():
-    # Ambil waktu Jakarta, lalu copot label zonanya (replace tzinfo=None) agar DB tidak bingung!
+    # Ambil waktu Jakarta (WIB)
     now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).replace(tzinfo=None)
-    print(f"[{now_wib.strftime('%H:%M:%S')}] 🤖 Mengecek jadwal postingan IG...")
+    print(f"[{now_wib.strftime('%H:%M:%S')}] 🤖 Robot sedang mengecek antrean Draft...")
     
-    # Buka koneksi database di latar belakang
     async with AsyncSessionLocal() as db:
-        # Cari postingan yang waktunya sudah tiba, dan statusnya masih SCHEDULED
+        # Cari postingan yang statusnya DRAFT (atau SCHEDULED) dan waktunya sudah tiba/lewat
         result = await db.execute(
             select(ScheduledPost).filter(
-                ScheduledPost.status == PostStatus.SCHEDULED,
+                ScheduledPost.status.in_([PostStatus.DRAFT, PostStatus.SCHEDULED]),
                 ScheduledPost.scheduled_time <= now_wib
             )
         )
         posts_to_publish = result.scalars().all()
 
         for p in posts_to_publish:
-            print(f"🚀 Memproses Postingan ID: {p.id} ({p.product_name})...")
+            print(f"🚀 Memproses [{p.platform}] ID: {p.id} - Judul: {p.title}...")
             
-            # PANGGIL KURIR INSTAGRAM!
-            is_success = await post_to_instagram(image_url=p.image_url, caption=p.copywriting)
+            is_success = False
+            
+            # LOGIKA PEMILIHAN KURIR BERDASARKAN PLATFORM
+            if p.platform.lower() == "instagram":
+                is_success = await post_to_instagram(image_url=p.image_url, caption=p.caption)
+            elif p.platform.lower() == "telegram":
+                is_success = await post_to_telegram(image_url=p.image_url, caption=p.caption)
+            else:
+                print(f"⚠️ Platform '{p.platform}' tidak dikenal!")
+                continue
 
-            # Update status di database
+            # Update status hasil pengiriman di database
             if is_success:
                 p.status = PostStatus.PUBLISHED
+                print(f"✅ Postingan {p.id} Sukses Terbit!")
             else:
                 p.status = PostStatus.FAILED
+                print(f"❌ Postingan {p.id} Gagal Terbit!")
             
             db.add(p)
             await db.commit()
 
-# --- LIFESPAN MANAGER (Gaya Modern FastAPI) ---
-# Menggabungkan pembuatan tabel DB dan nyala/matinya Scheduler di satu tempat
+# =====================================================================
+# ⚡ LIFESPAN MANAGER (Startup & Shutdown)
+# =====================================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. STARTUP: Sinkronisasi Tabel Database Neon
+    # --- STARTUP ---
+    # 1. Sinkronisasi Tabel Database Neon (Pastikan kolom baru title & platform sudah ada)
     async with engine.begin() as conn:
-        #drop dlu yak
-        #await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Semua tabel berhasil disinkronkan ke Database Neon!")
+    print("✅ Database Neon Sinkron!")
     
-    # 2. STARTUP: Nyalakan Robot Scheduler
-    scheduler.start()
-    print("⏰ Robot APScheduler berhasil dijalankan!")
+    # 2. Jalankan Robot Scheduler
+    if not scheduler.running:
+        scheduler.start()
+    print("⏰ Robot APScheduler Aktif (Cek tiap 1 menit)!")
     
-    yield # --- APLIKASI FASTAPI BERJALAN DI SINI ---
+    yield # --- SERVER BERJALAN ---
     
-    # 3. SHUTDOWN: Matikan Robot saat server Uvicorn dimatikan (CTRL+C)
+    # --- SHUTDOWN ---
     scheduler.shutdown()
     print("🛑 Robot APScheduler dimatikan dengan aman.")
 
 
-# --- INISIALISASI APLIKASI FASTAPI ---
+# =====================================================================
+# 🚀 INISIALISASI FASTAPI
+# =====================================================================
 app = FastAPI(
-    title="Marketing Automation API",
-    description="Backend cerdas untuk AI Poster & Copywriting",
-    version="1.0.0",
-    lifespan=lifespan # Pasang mesin lifespan yang sudah kita buat di atas
+    title="AiGoncy - Marketing Automation API",
+    description="Backend cerdas untuk AI Studio Pintar & Auto-Posting Instagram/Telegram",
+    version="2.0.0",
+    lifespan=lifespan
 )
 
-# --- MIDDLEWARE CORS ---
+# MIDDLEWARE CORS (Agar Mas Alfin bisa akses dari domain berbeda)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -89,14 +106,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- REGISTRASI ROUTES ---
-# Mendaftarkan semua endpoint dengan rapi, tidak ada yang dobel!
+# REGISTRASI ROUTES (Pintu Masuk API)
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(generate.router, prefix="/api/v1/generate", tags=["AI Generation"])
-app.include_router(posts.router, prefix="/api/v1/posts", tags=["Instagram Auto-Poster"])
-app.include_router(schedule.router, prefix="/api/v1/schedule", tags=["Legacy Scheduling"])
+app.include_router(generate.router, prefix="/api/v1/generate", tags=["AI Studio Pintar"])
+app.include_router(schedule.router, prefix="/api/v1/schedule", tags=["Schedule & Draft Management"])
 
-# --- ROOT ENDPOINT ---
 @app.get("/", tags=["Root"])
 async def root():
-    return {"status": "online", "message": "FastAPI Server is running smoothly!"}
+    return {
+        "status": "online", 
+        "app_name": "AiGoncy API",
+        "current_time_wib": datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+    }

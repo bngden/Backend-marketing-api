@@ -20,6 +20,8 @@ class Settings:
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
     IG_USERNAME: str = os.getenv("IG_USERNAME", "")
     IG_PASSWORD: str = os.getenv("IG_PASSWORD", "")
+    IG_USER_ID: str = os.getenv("IG_USER_ID", "")
+    META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
 
     SECRET_KEY: str = "marketing_api_automation"
     ALGORITHM: str = "HS256"

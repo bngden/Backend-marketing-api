@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.db.database import Base 
 
-# --- INI DIA YANG DICARI OLEH ERROR TADI ---
+# --- ENUM UNTUK STATUS ---
 class PostStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     SCHEDULED = "SCHEDULED"
@@ -14,17 +14,23 @@ class ScheduledPost(Base):
     __tablename__ = "scheduled_posts"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_name = Column(String, index=True)
-    category = Column(String)
     
-    # Hasil dari AI:
+    # --- KOLOM BARU SESUAI DESAIN FRONT-END ---
+    title = Column(String, index=True)               # Untuk menampung "Judul"
+    platform = Column(String, default="Instagram")   # Untuk menampung "Platform" (Instagram/Telegram)
+    
+    # Kolom lama (dibiarkan nullable=True agar data lama tidak error)
+    product_name = Column(String, index=True, nullable=True)
+    category = Column(String, nullable=True)
+    
+    # --- HASIL DARI AI ---
     image_url = Column(String) 
-    copywriting = Column(Text) 
+    caption = Column(Text) # Berubah dari copywriting menjadi caption agar sama dengan UI
     
     scheduled_time = Column(DateTime)
     
-    # --- UBAH KOLOM INI MENJADI ENUM ---
-    status = Column(Enum(PostStatus), default=PostStatus.SCHEDULED) 
+    # --- DEFAULT STATUS DIUBAH JADI DRAFT ---
+    status = Column(Enum(PostStatus), default=PostStatus.DRAFT) 
     
     # Relasi ke tabel User
     user_id = Column(Integer, ForeignKey("users.id"))

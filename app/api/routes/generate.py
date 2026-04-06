@@ -1,37 +1,33 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from app.schemas.generate_schema import GenerateCopyRequest, GenerateCopyResponse
-from app.services.ai_service import generate_aida_copywriting
-from app.services.image_service import generate_product_image
+from fastapi import APIRouter, HTTPException, Depends
+from app.schemas.generate_schema import GenerateStudioRequest
+from app.services.post_service import process_studio_generation
+
+# (Opsional) Jika endpoint ini wajib login, uncomment baris di bawah:
+from app.api.deps import get_current_user 
 
 router = APIRouter()
 
-@router.post("/copywriting", response_model=GenerateCopyResponse)
-async def create_copywriting(request: GenerateCopyRequest):
-    result_text = await generate_aida_copywriting(
-        product_name=request.product_name,
-        product_description=request.product_description
-    )
-    return GenerateCopyResponse(copywriting=result_text)
-
-# --- ENDPOINT BARU DENGAN KATEGORI ---
-@router.post("/image")
-async def create_aesthetic_image(
-    file: UploadFile = File(...),
-    user_prompt: str = Form(""),
-    category: str = Form(..., description="Pilih: makanan, kosmetik, fashion, atau elektronik") 
+@router.post("/studio")
+async def create_studio_content(
+    request: GenerateStudioRequest,
+    current_user = Depends(get_current_user) # Aktifkan jika wajib login
 ):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File yang diunggah harus berupa gambar (JPG/PNG)!")
-
-    image_bytes = await file.read()
-
-    # Panggil fungsi Qwen + Cloudinary kita
-    result_url = await generate_product_image(image_bytes, user_prompt, category)
-
-    # Return sebagai JSON agar rapi dan bisa dibaca oleh Frontend / Database nanti
-    return {
-        "status": "success",
-        "category": category,
-        "message": "Poster berhasil dibuat dan diunggah ke Cloudinary!",
-        "image_url": result_url
-    }
+    """
+    ENDPOINT 1: STUDIO PINTAR (ALL-IN-ONE)
+    base64 fin untuk gambarnya 
+    (BELUM DISIMPAN KE DATABASE)
+    """
+    try:
+        # Panggil Manajer Studio Pintar kita
+        result = await process_studio_generation(request)
+        
+        # Return sebagai JSON agar Mas Alfin bisa merendernya di layar
+        return {
+            "status": "success",
+            "message": "Poster dan Copywriting berhasil dibuat!",
+            "data": result # Akan berisi {"caption": "...", "image_url": "..."}
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Gagal memproses AI Studio: {str(e)}")

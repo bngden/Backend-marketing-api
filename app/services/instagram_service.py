@@ -1,78 +1,61 @@
-# import httpx
-
-# # URL Webhook Sakti dari Make.com Anda
-# MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/mr2xjzb8m2hqd2sesqt03nrc1opwy9tr"
-
-# async def post_to_instagram(image_url: str, caption: str) -> bool:
-#     """
-#     Kurir VIP: Mengirimkan pesanan langsung ke Make.com via Webhook.
-#     Make.com yang akan mengurus upload ke Instagram Official API.
-#     """
-#     try:
-#         print(f"🚀 1. Memanggil Make.com via Webhook...")
-        
-#         # Ini kotak paket yang akan dikirim ke Make.com
-#         payload = {
-#             "image_url": image_url,
-#             "caption": caption
-#         }
-
-#         # Mengirim POST request ke Make.com secara asinkron
-#         async with httpx.AsyncClient() as client:
-#             response = await client.post(MAKE_WEBHOOK_URL, json=payload, timeout=30.0)
-            
-#             # Kalau Make.com membalas dengan status 200 (OK)
-#             if response.status_code in [200, 201]:
-#                 print("✅ BINGO! Make.com berhasil menerima data dan sedang memposting ke IG!")
-#                 return True
-#             else:
-#                 print(f"⚠️ Make.com menolak data. Status: {response.status_code}")
-#                 return False
-
-#     except Exception as e:
-#         print(f"❌ Gagal mengirim ke Webhook Make.com: {str(e)}")
-#         return False
-
-# ini adalah rekayasa untuk mengirim ke telegram ya
-
 import httpx
-
-# Kunci Pas Telegram Anda
-TELEGRAM_BOT_TOKEN = "8728100999:AAEJq6WDRuEcAqhPx4wZDfAheLumbnqTGzY"
-
-# Koordinat Grup "MARKET PRODUK AFILIATE"
-TELEGRAM_CHAT_ID = "-1003874533814" 
+import asyncio
+from app.core.config import settings
 
 async def post_to_instagram(image_url: str, caption: str) -> bool:
     """
-    Sssst... Namanya masih post_to_instagram, 
-    tapi aslinya kurir ini sekarang ngirim ke Telegram! 🤫🚀
+    Jalur Resmi Meta untuk Akun Bisnis/Kreator (Developer Mode).
+    Membutuhkan IG_USER_ID dan META_ACCESS_TOKEN di file .env.
     """
-    try:
-        print(f"🚀 1. Mengirim Poster dan Copywriting AI ke Telegram...")
-        
-        # Endpoint resmi Telegram untuk mengirim foto
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-        
-        # Paket data untuk Telegram
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "photo": image_url,
-            "caption": caption,
-            "parse_mode": "HTML" # Biar format tebal/miring dari Gemini terbaca
-        }
+    # Mengambil token dari sistem environment
+    ig_user_id = getattr(settings, "IG_USER_ID", None)
+    access_token = getattr(settings, "META_ACCESS_TOKEN", None)
 
-        # Tembak langsung!
+    if not ig_user_id or not access_token:
+        print("⚠️ [INSTAGRAM] IG_USER_ID atau META_ACCESS_TOKEN belum diatur! Posting IG dibatalkan.")
+        return False
+
+    try:
+        # Kita gunakan API versi v21.0 (Versi stabil terbaru Meta)
+        API_VERSION = "v21.0"
+        
+        print("🚀 [INSTAGRAM] Langkah 1: Membuat Container Media di Server Meta...")
+        container_url = f"https://graph.facebook.com/{API_VERSION}/{ig_user_id}/media"
+        container_payload = {
+            "image_url": image_url,
+            "caption": caption,
+            "access_token": access_token
+        }
+        
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, data=payload, timeout=30.0)
+            container_res = await client.post(container_url, data=container_payload, timeout=30.0)
             
-            if response.status_code == 200:
-                print("✅ BINGO! Berhasil masuk ke Grup Telegram!")
+            if container_res.status_code != 200:
+                print(f"❌ [INSTAGRAM] Gagal membuat container: {container_res.text}")
+                return False
+                
+            creation_id = container_res.json().get("id")
+            print(f"⏳ [INSTAGRAM] Container dibuat (ID: {creation_id}). Menunggu Meta merender...")
+
+            # Jeda 10 detik. Meta kadang butuh waktu agak lama untuk download gambar dari Cloudinary
+            await asyncio.sleep(10) 
+
+            print("🚀 [INSTAGRAM] Langkah 2: Menerbitkan Container ke Feed...")
+            publish_url = f"https://graph.facebook.com/{API_VERSION}/{ig_user_id}/media_publish"
+            publish_payload = {
+                "creation_id": creation_id,
+                "access_token": access_token
+            }
+
+            publish_res = await client.post(publish_url, data=publish_payload, timeout=30.0)
+            
+            if publish_res.status_code == 200:
+                print("✅ [INSTAGRAM] BINGO! Berhasil posting ke Feed via Official API!")
                 return True
             else:
-                print(f"⚠️ Telegram menolak. Error: {response.text}")
+                print(f"❌ [INSTAGRAM] Gagal menerbitkan: {publish_res.text}")
                 return False
 
     except Exception as e:
-        print(f"❌ Gagal mengirim ke Telegram: {str(e)}")
+        print(f"❌ [INSTAGRAM] Error Sistem: {str(e)}")
         return False
