@@ -97,10 +97,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# MIDDLEWARE CORS (Agar Mas Alfin bisa akses dari domain berbeda)
+# MIDDLEWARE CORS 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=[
+        "http://localhost:5173",                
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "https://marketing-ai-gency.vercel.app", 
+        "https://marketing-ai-gency.vercel.app/" 
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
