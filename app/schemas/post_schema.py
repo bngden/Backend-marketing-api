@@ -5,7 +5,8 @@ from datetime import datetime
 class PostScheduleCreate(BaseModel):
     title: str            
     caption: str          
-    image_url: str        
+    image_url: str
+    video_url: Optional[str] = None        
     platform: str         
     scheduled_time: datetime 
 

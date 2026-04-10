@@ -11,18 +11,19 @@ cloudinary.config(
     secure=True # Wajib True agar URL yang dihasilkan pakai HTTPS
 )
 
-async def upload_image_to_cloudinary(image_bytes: bytes, folder_name: str = "marketing_assets") -> str:
+# 1. TAMBAHKAN PARAMETER resource_type: str = "image"
+async def upload_image_to_cloudinary(image_bytes: bytes, folder_name: str = "marketing_assets", resource_type: str = "image") -> str:
     """
-    Fungsi ini menerima data mentah gambar (bytes) dari Qwen, 
+    Fungsi ini menerima data mentah (bytes) dari Qwen atau Magic Hour, 
     mengunggahnya ke Cloudinary, dan mengembalikan Public URL.
     """
     try:
-        print(f"☁️ Mengunggah gambar (Bytes) ke Cloudinary (Folder: {folder_name})...")
+        print(f"☁️ Mengunggah data (Bytes) ke Cloudinary (Folder: {folder_name})...")
         
         response = cloudinary.uploader.upload(
             image_bytes,
             folder=folder_name,
-            resource_type="image"
+            resource_type=resource_type # <-- Sekarang dia ngambil dari parameter di atas
         )
         
         secure_url = response.get("secure_url")
@@ -33,10 +34,11 @@ async def upload_image_to_cloudinary(image_bytes: bytes, folder_name: str = "mar
     except Exception as e:
         import traceback
         print(traceback.format_exc())
-        raise Exception(f"Gagal mengunggah gambar ke Cloudinary: {str(e)}")
+        raise Exception(f"Gagal mengunggah data bytes ke Cloudinary: {str(e)}")
 
 
-async def upload_base64_to_cloudinary(base64_string: str, folder_name: str = "frontend_uploads") -> str:
+# 2. TAMBAHKAN PARAMETER resource_type: str = "image" JUGA DI SINI
+async def upload_base64_to_cloudinary(base64_string: str, folder_name: str = "frontend_uploads", resource_type: str = "image") -> str:
     """
     Fungsi BARU: Menerima string base64 dari frontend (Mas Alfin),
     mengunggahnya ke Cloudinary, dan mengembalikan Public URL.
@@ -44,14 +46,10 @@ async def upload_base64_to_cloudinary(base64_string: str, folder_name: str = "fr
     try:
         print(f"☁️ Mengunggah gambar (Base64) ke Cloudinary (Folder: {folder_name})...")
         
-        # Cloudinary uploader sangat pintar, dia bisa langsung membaca string base64
-        # asalkan Mas Alfin mengirimnya dengan format "data:image/jpeg;base64,..."
-        # atau string base64 murni.
-        
         response = cloudinary.uploader.upload(
             base64_string,
             folder=folder_name,
-            resource_type="image"
+            resource_type=resource_type # <-- Error silumannya sudah hilang!
         )
         
         secure_url = response.get("secure_url")

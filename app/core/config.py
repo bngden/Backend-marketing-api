@@ -22,7 +22,7 @@ class Settings:
     IG_PASSWORD: str = os.getenv("IG_PASSWORD", "")
     IG_USER_ID: str = os.getenv("IG_USER_ID", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
-
+    MAGIC_HOUR_API_KEY: str = os.getenv("MAGIC_HOUR_API_KEY", "")
     SECRET_KEY: str = "marketing_api_automation"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7

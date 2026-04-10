@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-
+from app.api.deps import get_current_user
 # UBAH BARIS INI: Ambil get_db dari folder db
 from app.db.database import get_db 
 from app.core.security import get_password_hash, verify_password, create_access_token
@@ -63,3 +63,7 @@ async def login_user(
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/users", response_model=UserResponse)
+async def get_my_profile(current_user: User = Depends(get_current_user)):
+    return current_user

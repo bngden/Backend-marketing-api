@@ -8,7 +8,7 @@ TELEGRAM_CHAT_ID = "-1003874533814"
 async def post_to_telegram(image_url: str, caption: str) -> bool:
     """Mengirim poster dan copywriting ke Grup Telegram"""
     try:
-        print(f"🚀 [TELEGRAM] Mengirim Poster ke Grup...")
+        print(f"[TELEGRAM] Mengirim Poster ke Grup...")
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
         
         payload = {
@@ -22,10 +22,10 @@ async def post_to_telegram(image_url: str, caption: str) -> bool:
             response = await client.post(url, data=payload, timeout=30.0)
             
             if response.status_code == 200:
-                print("✅ [TELEGRAM] BINGO! Berhasil masuk ke Grup!")
+                print("[TELEGRAM] BINGO! Berhasil masuk ke Grup!")
                 return True
             else:
-                print(f"⚠️ [TELEGRAM] Gagal. Error: {response.text}")
+                print(f" [TELEGRAM] Gagal. Error: {response.text}")
                 return False
 
     except Exception as e:

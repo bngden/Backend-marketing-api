@@ -25,6 +25,7 @@ class ScheduledPost(Base):
     
     # --- HASIL DARI AI ---
     image_url = Column(String) 
+    video_url = Column(String, nullable=True)
     caption = Column(Text) # Berubah dari copywriting menjadi caption agar sama dengan UI
     
     scheduled_time = Column(DateTime)
