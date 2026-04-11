@@ -23,7 +23,7 @@ async def upload_image_to_cloudinary(image_bytes: bytes, folder_name: str = "mar
         response = cloudinary.uploader.upload(
             image_bytes,
             folder=folder_name,
-            resource_type=resource_type # <-- Sekarang dia ngambil dari parameter di atas
+            resource_type=resource_type 
         )
         
         secure_url = response.get("secure_url")
@@ -49,7 +49,7 @@ async def upload_base64_to_cloudinary(base64_string: str, folder_name: str = "fr
         response = cloudinary.uploader.upload(
             base64_string,
             folder=folder_name,
-            resource_type=resource_type # <-- Error silumannya sudah hilang!
+            resource_type=resource_type 
         )
         
         secure_url = response.get("secure_url")

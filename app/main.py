@@ -12,7 +12,8 @@ from app.models.post import ScheduledPost, PostStatus
 
 # Import services (Kurir Pengantar)
 from app.services.instagram_service import post_to_instagram
-from app.services.telegram_service import post_to_telegram # Import kurir baru
+from app.services.telegram_service import post_to_telegram 
+from app.services.facebook_service import post_to_facebook
 
 # Import routes (Pintu Gerbang API)
 from app.api.routes import auth, generate, schedule # Posts sudah dibuang
@@ -27,39 +28,63 @@ scheduler = AsyncIOScheduler()
 async def check_and_publish_scheduled_posts():
     # Ambil waktu Jakarta (WIB)
     now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).replace(tzinfo=None)
-    print(f"[{now_wib.strftime('%H:%M:%S')}] 🤖 Robot sedang mengecek antrean Draft...")
+    print(f"[{now_wib.strftime('%H:%M:%S')}] 🤖 Robot mengecek antrean (WIB: {now_wib.strftime('%Y-%m-%d %H:%M')})...")
     
     async with AsyncSessionLocal() as db:
-        # Cari postingan yang statusnya DRAFT (atau SCHEDULED) dan waktunya sudah tiba/lewat
+        # Cari postingan SCHEDULED yang waktunya sudah lewat/tiba
+        # Kita hanya ambil yang statusnya SCHEDULED agar DRAFT tidak ikut terposting
         result = await db.execute(
             select(ScheduledPost).filter(
-                ScheduledPost.status.in_([PostStatus.DRAFT, PostStatus.SCHEDULED]),
+                ScheduledPost.status == PostStatus.SCHEDULED,
                 ScheduledPost.scheduled_time <= now_wib
             )
         )
         posts_to_publish = result.scalars().all()
 
         for p in posts_to_publish:
-            print(f"🚀 Memproses [{p.platform}] ID: {p.id} - Judul: {p.title}...")
+            print(f"🚀 Memproses [{p.platform.upper()}] ID: {p.id} - '{p.title}'...")
             
             is_success = False
             
-            # LOGIKA PEMILIHAN KURIR BERDASARKAN PLATFORM
+            # 💡 LOGIKA DETEKSI MEDIA (VIDEO vs GAMBAR)
+            # Jika ada video_url, maka prioritaskan video. Jika tidak, pakai image_url.
+            target_media = p.video_url if p.video_url else p.image_url
+            is_video = True if p.video_url else False
+
+            # 🔀 LOGIKA PEMILIHAN KURIR BERDASARKAN PLATFORM
             if p.platform.lower() == "instagram":
-                is_success = await post_to_instagram(image_url=p.image_url, caption=p.caption)
+                is_success = await post_to_instagram(
+                    media_url=target_media, 
+                    caption=p.caption, 
+                    is_video=is_video
+                )
+            
+            elif p.platform.lower() == "facebook":
+                is_success = await post_to_facebook(
+                    media_url=target_media, 
+                    caption=p.caption, 
+                    is_video=is_video
+                )
+                
             elif p.platform.lower() == "telegram":
-                is_success = await post_to_telegram(image_url=p.image_url, caption=p.caption)
+                # Untuk Telegram, sementara kita asumsikan kirim foto/video standar
+                is_success = await post_to_telegram(
+                    image_url=target_media, 
+                    caption=p.caption,
+                    is_video=is_video
+                )
+                
             else:
-                print(f"⚠️ Platform '{p.platform}' tidak dikenal!")
+                print(f"⚠️ Platform '{p.platform}' belum didukung robot!")
                 continue
 
-            # Update status hasil pengiriman di database
+            # Update status hasil eksekusi
             if is_success:
                 p.status = PostStatus.PUBLISHED
-                print(f"✅ Postingan {p.id} Sukses Terbit!")
+                print(f"✅ Postingan {p.id} BERHASIL TERBIT!")
             else:
                 p.status = PostStatus.FAILED
-                print(f"❌ Postingan {p.id} Gagal Terbit!")
+                print(f"❌ Postingan {p.id} GAGAL!")
             
             db.add(p)
             await db.commit()

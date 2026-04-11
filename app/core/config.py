@@ -26,5 +26,8 @@ class Settings:
     SECRET_KEY: str = "marketing_api_automation"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+    FB_PAGE_ID: str = os.getenv("FB_PAGE_ID", "")
+    FB_PAGE_ACCESS_TOKEN: str = os.getenv("FB_PAGE_ACCESS_TOKEN", "")
+    FB_BUSINESS_ID: str = os.getenv("FB_BUSINESS_ID", "")
 # Inisialisasi object settings agar bisa di-import oleh file lain
 settings = Settings()

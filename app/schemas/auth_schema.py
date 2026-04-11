@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 class UserCreate(BaseModel):
     username: str
@@ -21,6 +22,10 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    business: Optional[str] = None
+    domicile: Optional[str] = None
 
     class Config:
         from_attributes = True

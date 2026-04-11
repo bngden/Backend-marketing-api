@@ -59,10 +59,7 @@ async def create_draft_post(db: AsyncSession, user_id: int, post_data: PostSched
         title=post_data.title,
         caption=post_data.caption,
         image_url=post_data.image_url,
-        
-        # 👇 TAMBAHKAN INI NANTI JIKA DATABASE ANDA SUDAH DI-MIGRASI
-        # video_url=post_data.video_url, 
-        
+        video_url=post_data.video_url, 
         platform=post_data.platform,
         category="Auto-Generated", 
         scheduled_time=post_data.scheduled_time.replace(tzinfo=None), 
