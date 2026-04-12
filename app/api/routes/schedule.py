@@ -30,7 +30,7 @@ async def create_schedule(
         else:
             # Jika Frontend mengirim String text biasa
             plat_str = post_data.platform.strip().lower()
-            if plat_str in ["all", "semua", "semua platform"]:
+            if plat_str in ["all", "semua", "semua platform", "All" , "ALL"]:
                 target_platforms = ["Instagram", "Facebook", "Telegram"]
             elif "," in plat_str:
                 target_platforms = [p.strip() for p in plat_str.split(",")]
