@@ -35,7 +35,7 @@ async def check_and_publish_scheduled_posts():
         # Kita hanya ambil yang statusnya SCHEDULED agar DRAFT tidak ikut terposting
         result = await db.execute(
             select(ScheduledPost).filter(
-                ScheduledPost.status == PostStatus.SCHEDULED,
+                ScheduledPost.status.in_([PostStatus.SCHEDULED, PostStatus.DRAFT]),
                 ScheduledPost.scheduled_time <= now_wib
             )
         )
