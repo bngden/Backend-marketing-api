@@ -69,7 +69,7 @@ async def check_and_publish_scheduled_posts():
             elif p.platform.lower() == "telegram":
                 # Untuk Telegram, sementara kita asumsikan kirim foto/video standar
                 is_success = await post_to_telegram(
-                    image_url=target_media, 
+                    media_url=target_media, 
                     caption=p.caption,
                     is_video=is_video
                 )
