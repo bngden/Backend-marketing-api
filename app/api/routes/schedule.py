@@ -23,14 +23,21 @@ async def create_schedule(
     try:
         target_platforms = []
 
-        # LOGIKA DETEKSI PLATFORM YANG SANGAT FLEKSIBEL
+        
         if isinstance(post_data.platform, list):
-            # Jika Frontend mengirim Array: ["Instagram", "Facebook"]
-            target_platforms = post_data.platform
+            # Kita bersihkan dan kecilkan semua huruf di dalam array
+            clean_list = [p.strip().lower() for p in post_data.platform]
+            
+            # CEK: Apakah ada kata 'all' atau 'semua' di dalam array tersebut?
+            if "all" in clean_list or "semua" in clean_list:
+                target_platforms = ["Instagram", "Facebook", "Telegram"]
+            else:
+                # Jika tidak ada 'all', baru kita pakai isi array-nya
+                target_platforms = post_data.platform
         else:
-            # Jika Frontend mengirim String text biasa
+            # Logika jika yang dikirim adalah String biasa (bukan array)
             plat_str = post_data.platform.strip().lower()
-            if plat_str in ["all", "semua", "semua platform", "All" , "ALL"]:
+            if plat_str in ["all", "semua", "semua platform"]:
                 target_platforms = ["Instagram", "Facebook", "Telegram"]
             elif "," in plat_str:
                 target_platforms = [p.strip() for p in plat_str.split(",")]
